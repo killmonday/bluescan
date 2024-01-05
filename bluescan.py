@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python2
 # -*- coding: utf-8 -*-
 # pip2 install PySocks
 # on windows, must install win_inet_pton also : pip2 install win_inet_pton
@@ -7,6 +7,8 @@ from ctypes import *
 import os
 import socket
 import traceback
+import csv 
+
 try:
     import socks
 except:
@@ -26,7 +28,12 @@ import time
 import argparse
 from datetime import datetime
 
+
 q_in = Queue.Queue(maxsize=1000)
+q_csv = Queue.Queue(maxsize=1000)
+
+
+
 
 class GetLog(object):
     logger = None
@@ -374,7 +381,7 @@ def check(ip, port=445, timeout=2.0):
                 # log.info("[ ] [{}] err: {}".format(ip, 'close'))
                 pass
             return
-
+        
         # SMB - Negotiate Protocol Request
         # raw_proto = negotiate_proto_request()
         raw_proto = '\x00\x00\x00\x85\xff\x53\x4d\x42\x72\x00\x00\x00\x00\x18\x53\xc0\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xfe\x00\x00\x40\x00\x00\x62\x00\x02\x50\x43\x20\x4e\x45\x54\x57\x4f\x52\x4b\x20\x50\x52\x4f\x47\x52\x41\x4d\x20\x31\x2e\x30\x00\x02\x4c\x41\x4e\x4d\x41\x4e\x31\x2e\x30\x00\x02\x57\x69\x6e\x64\x6f\x77\x73\x20\x66\x6f\x72\x20\x57\x6f\x72\x6b\x67\x72\x6f\x75\x70\x73\x20\x33\x2e\x31\x61\x00\x02\x4c\x4d\x31\x2e\x32\x58\x30\x30\x32\x00\x02\x4c\x41\x4e\x4d\x41\x4e\x32\x2e\x31\x00\x02\x4e\x54\x20\x4c\x4d\x20\x30\x2e\x31\x32\x00'
@@ -385,21 +392,29 @@ def check(ip, port=445, timeout=2.0):
         except:
             nbtscan(ip)
             return
-
         payload2 = b'\x00\x00\x01\x0a\xff\x53\x4d\x42\x73\x00\x00\x00\x00\x18\x07\xc8\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xfe\x00\x00\x40\x00\x0c\xff\x00\x0a\x01\x04\x41\x32\x00\x00\x00\x00\x00\x00\x00\x4a\x00\x00\x00\x00\x00\xd4\x00\x00\xa0\xcf\x00\x60\x48\x06\x06\x2b\x06\x01\x05\x05\x02\xa0\x3e\x30\x3c\xa0\x0e\x30\x0c\x06\x0a\x2b\x06\x01\x04\x01\x82\x37\x02\x02\x0a\xa2\x2a\x04\x28\x4e\x54\x4c\x4d\x53\x53\x50\x00\x01\x00\x00\x00\x07\x82\x08\xa2\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x05\x02\xce\x0e\x00\x00\x00\x0f\x00\x57\x00\x69\x00\x6e\x00\x64\x00\x6f\x00\x77\x00\x73\x00\x20\x00\x53\x00\x65\x00\x72\x00\x76\x00\x65\x00\x72\x00\x20\x00\x32\x00\x30\x00\x30\x00\x33\x00\x20\x00\x33\x00\x37\x00\x39\x00\x30\x00\x20\x00\x53\x00\x65\x00\x72\x00\x76\x00\x69\x00\x63\x00\x65\x00\x20\x00\x50\x00\x61\x00\x63\x00\x6b\x00\x20\x00\x32\x00\x00\x00\x00\x00\x57\x00\x69\x00\x6e\x00\x64\x00\x6f\x00\x77\x00\x73\x00\x20\x00\x53\x00\x65\x00\x72\x00\x76\x00\x65\x00\x72\x00\x20\x00\x32\x00\x30\x00\x30\x00\x33\x00\x20\x00\x35\x00\x2e\x00\x32\x00\x00\x00\x00\x00'
-        client.send(payload2)
-        tcp_response = client.recv(buffersize)
+        
+        try:
+            client.send(payload2)
+            tcp_response = client.recv(buffersize)
+            if len(tcp_response) == 0:
+                nbtscan(ip)
+                return
+        except:
+            nbtscan(ip)
+            return
         nbt_info = get_info(tcp_response)
         
-
         
         # SMB - Session Setup AndX Request
         #raw_proto = session_setup_andx_request()
         raw_proto = '\x00\x00\x00\x88\xff\x53\x4d\x42\x73\x00\x00\x00\x00\x18\x07\x60\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xfe\x00\x00\x40\x00\x0d\xff\x00\x88\x00\x04\x11\x0a\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\xd4\x00\x00\x00\x4b\x00\x00\x00\x00\x00\x00\x57\x00\x69\x00\x6e\x00\x64\x00\x6f\x00\x77\x00\x73\x00\x20\x00\x32\x00\x30\x00\x30\x00\x30\x00\x20\x00\x32\x00\x31\x00\x39\x00\x35\x00\x00\x00\x57\x00\x69\x00\x6e\x00\x64\x00\x6f\x00\x77\x00\x73\x00\x20\x00\x32\x00\x30\x00\x30\x00\x30\x00\x20\x00\x35\x00\x2e\x00\x30\x00\x00\x00'
-        client.send(raw_proto)
-        tcp_response = client.recv(buffersize)
-
-        
+        try:
+            client.send(raw_proto)
+            tcp_response = client.recv(buffersize)
+        except:
+            nbtscan(ip)
+            return
         netbios = tcp_response[:4]
         smb_header = tcp_response[4:36]   # SMB Header: 32 bytes
         smb = SMB_HEADER(smb_header)
@@ -413,12 +428,14 @@ def check(ip, port=445, timeout=2.0):
         native_os = session_setup_andx_response[9:].split('\x00')[0]
         
         # SMB - Tree Connect AndX Request
-        #raw_proto = tree_connect_andx_request(ip, user_id)
-        
+        # raw_proto = tree_connect_andx_request(ip, user_id)
         raw_proto = '\x00\x00\x00\x58\xff\x53\x4d\x42\x75\x00\x00\x00\x00\x18\x07\xc0\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xfe' + user_id + '\x40\x00\x04\xff\x00\x58\x00\x08\x00\x01\x00\x2d\x00\x00\x5c\x00\x5c\x00\x31\x00\x37\x00\x32\x00\x2e\x00\x31\x00\x36\x00\x2e\x00\x39\x00\x39\x00\x2e\x00\x35\x00\x5c\x00\x49\x00\x50\x00\x43\x00\x24\x00\x00\x00\x3f\x3f\x3f\x3f\x3f\x00'
         
-        #print len(raw_proto)
-        client.send(raw_proto)
+        try:
+            client.send(raw_proto)
+        except:
+            nbtscan(ip)
+            return
         
         nb_name = 'None'
         dns_name = 'None'
@@ -432,7 +449,6 @@ def check(ip, port=445, timeout=2.0):
             dns_name = nbt_info['dns_name']
         if nbt_info and nbt_info.get('nbt_domain_name') != None:
             nbt_domain_name = nbt_info['nbt_domain_name']
-        
         if nbt_info == None:
             nb_record = nbtscan(ip, False)
             if nb_record:
@@ -441,39 +457,52 @@ def check(ip, port=445, timeout=2.0):
             nbt_domain_name = 'WORKGROUP'
             dns_name = 'None'
         try:
-            tcp_response = client.recv(buffersize)
+            tcp_response = client.recv(buffersize)   # maybe recv empty byte when some error occurt, but may not throw excetption !!!!!
         except:
-            log.critical("[ ] [{}] {}\\{}  {}  ({})".format(ip, nbt_domain_name, nb_name, dns_name, os_info))
+            # traceback.print_exc()
+            netcard_info = oxid_scan(ip)
+            log.critical("[ ] [{}] {}\\{}  {}  ({})  {}".format(ip, nbt_domain_name, nb_name, dns_name, os_info, netcard_info))
+            q_csv.put([ip, nbt_domain_name, nb_name, dns_name, os_info, netcard_info, ''])
             return
+        
+        not_sure_vuln = False
+        if len(tcp_response) == 0:
+            not_sure_vuln = True
 
-        netbios = tcp_response[:4]
-        smb_header = tcp_response[4:36]   # SMB Header: 32 bytes
-        smb = SMB_HEADER(smb_header)
+        if not_sure_vuln == False:
+            netbios = tcp_response[:4]
+            smb_header = tcp_response[4:36]   # SMB Header: 32 bytes
+            smb = SMB_HEADER(smb_header)  
 
-        tree_id = struct.pack('<H', smb.tree_id)
-        process_id = struct.pack('<H', smb.process_id)
-        user_id = struct.pack('<H', smb.user_id)
-        multiplex_id = struct.pack('<H', smb.multiplex_id)
+            tree_id = struct.pack('<H', smb.tree_id)
+            process_id = struct.pack('<H', smb.process_id)
+            user_id = struct.pack('<H', smb.user_id)
+            multiplex_id = struct.pack('<H', smb.multiplex_id)
 
-        # SMB - PeekNamedPipe Request
-        raw_proto = peeknamedpipe_request(tree_id, process_id, user_id, multiplex_id)
-        client.send(raw_proto)
-        tcp_response = client.recv(buffersize)
+            # SMB - PeekNamedPipe Request 
+            raw_proto = peeknamedpipe_request(tree_id, process_id, user_id, multiplex_id)
+            try:
+                client.send(raw_proto)  # ipc conn for check ms17-010
+                tcp_response = client.recv(buffersize)   
+            except:
+                # traceback.print_exc()
+                nbtscan(ip)
+                return
+                
+            netbios = tcp_response[:4]
+            smb_header = tcp_response[4:36]
+            smb = SMB_HEADER(smb_header)
 
-        netbios = tcp_response[:4]
-        smb_header = tcp_response[4:36]
-        smb = SMB_HEADER(smb_header)
-
-        # nt_status = smb_header[5:9]
-        nt_status = struct.pack('BBH', smb.error_class, smb.reserved1, smb.error_code)
-
-        # 0xC0000205 - STATUS_INSUFF_SERVER_RESOURCES - vulnerable
-        # 0xC0000008 - STATUS_INVALID_HANDLE
-        # 0xC0000022 - STATUS_ACCESS_DENIED
-
+            # nt_status = smb_header[5:9]
+            nt_status = struct.pack('BBH', smb.error_class, smb.reserved1, smb.error_code)
+            # 0xC0000205 - STATUS_INSUFF_SERVER_RESOURCES - vulnerable
+            # 0xC0000008 - STATUS_INVALID_HANDLE
+            # 0xC0000022 - STATUS_ACCESS_DENIED
+        else:
+            nt_status = 'not sure'
 
         netcard_info = oxid_scan(ip)
-        if nt_status == '\x05\x02\x00\xc0':
+        if nt_status == '\x05\x02\x00\xc0':  # vuln
             '''
                 b'\x01\x00':'nbt_name',
                 b'\x02\x00':'nbt_domain_name',
@@ -483,12 +512,16 @@ def check(ip, port=445, timeout=2.0):
             '''
             
             log.critical("[+] [{}] {}\\{}  {}  ({}) multIP:{}".format(ip, nbt_domain_name, nb_name, dns_name, os_info, netcard_info)) #  
+            q_csv.put([ip, nbt_domain_name, nb_name, dns_name, os_info, netcard_info, 'MS17-010'])
 
             # vulnerable to MS17-010, check for DoublePulsar infection
             raw_proto = trans2_request(tree_id, process_id, user_id, multiplex_id)
-            client.send(raw_proto)
-            tcp_response = client.recv(buffersize)
-
+            try:
+                client.send(raw_proto)
+                tcp_response = client.recv(buffersize)
+            except:
+                nbtscan(ip)
+                return
             netbios = tcp_response[:4]
             smb_header = tcp_response[4:36]
             smb = SMB_HEADER(smb_header)
@@ -498,12 +531,20 @@ def check(ip, port=445, timeout=2.0):
                 log.critical("{} INFECTED with DoublePulsar! - XOR Key: {}".format(ip, key))
         elif nt_status in ('\x08\x00\x00\xc0', '\x22\x00\x00\xc0'):
             log.critical("[ ] [{}] {}\\{}  {}  ({}) multIP:{}".format(ip, nbt_domain_name, nb_name, dns_name, os_info, netcard_info)) #  
+            q_csv.put([ip, nbt_domain_name, nb_name, dns_name, os_info, netcard_info, ''])
             # log.critical("[ ] [{}] {}".format(ip, native_os))
         else:
             # log.critical("[ ] [{}] {}".format(ip, native_os))
-            log.critical("[ ] [{}] {}\\{}  {}  ({}) multIP:{}".format(ip, nbt_domain_name, nb_name, dns_name, os_info, netcard_info)) #  
+            if not_sure_vuln:
+                log.critical("[?] [{}] {}\\{}  {}  ({}) multIP:{}".format(ip, nbt_domain_name, nb_name, dns_name, os_info, netcard_info, 'can not check MS17-010')) #  
+                q_csv.put([ip, nbt_domain_name, nb_name, dns_name, os_info, netcard_info, ''])
+            else:
+                log.critical("[ ] [{}] {}\\{}  {}  ({}) multIP:{}".format(ip, nbt_domain_name, nb_name, dns_name, os_info, netcard_info)) #  
+                q_csv.put([ip, nbt_domain_name, nb_name, dns_name, os_info, netcard_info, ''])
+            
 
     except Exception as e:
+        # traceback.print_exc()
         # log.info("[ ] [{}] Exception: {}".format(ip, str(e)))
         pass
     finally:
@@ -699,14 +740,16 @@ def nbtscan(addr, is_write=True):
         if not nbns_result:
             return
         elif not nbns_result['unique']:
-            return
-        nbt_name = nbns_result['msg'].split('\n')[0].strip()
+            nbt_name = 'None\\None'
+        else:
+            nbt_name = nbns_result['msg'].split('\n')[0].strip()
         netcard_info = oxid_scan(addr)
         if is_write:
-            log.critical("[ ] [{}] {} multIP:{}".format(addr, nbt_name, netcard_info))
+            log.critical("[ ]  [{}]  {}  None  (None)  multIP:{}".format(addr, nbt_name, netcard_info))
+            q_csv.put([addr, nbt_name.split('\\')[0], nbt_name.split('\\')[1], 'None', 'None', netcard_info, ''])
         return nbt_name
     except Exception as e:
-        # log.info("[ ] [{}] Exception: {}".format(addr, str(e)))
+        #log.info("[ ] [{}] Exception: {}".format(addr, str(e)))
         pass
 
 
@@ -741,11 +784,10 @@ def oxid_scan(ip):
         else:
             return 'None'
     except Exception as e:
-        traceback.print_exc()
+        # traceback.print_exc()
         return 'None'
     finally:
         sock.close()
-
 
 
 
@@ -757,12 +799,37 @@ def consumer_exp():
             break
         check(ip)
 
+
+
+def write_csv():
+    while True:
+        line = q_csv.get()
+        # print(line, ' get ')
+        ip, nbt_domain_name, nb_name, dns_name, os_info, netcard_info, MS_17010 = line
+        fp_csv = open(output_path + '/' + time_str + '.csv', "a+b")
+        csv_writer = csv.writer(fp_csv, dialect="excel", )
+
+        # ip, nbt_domain_name, nb_name, dns_name, os_info, netcard_info
+        # 'IP', '机器名', '所在域', 'FQDN', '操作系统', '端口服务', '应用组件', '多网卡', '漏洞', '凭据', '身份', '杀软', '其他'
+        csv_writer.writerow([
+            ip, nb_name, nbt_domain_name, dns_name, os_info, '445' if os_info != 'None' else '139', 
+            'None', netcard_info, MS_17010,
+            '',
+            '',
+            '',
+            '',
+
+        ])
+        fp_csv.close()
+
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="")
     parser.add_argument("-ip", type=str, help="ip or cidr", nargs='?',)
     parser.add_argument("-f", type=str, help="ip file", nargs='?')
     parser.add_argument("-t", type=float, help="timeout", nargs='?', default=6.0)
-    parser.add_argument("-n", type=int, help="thread number", nargs='?', default=45)
+    parser.add_argument("-n", type=int, help="thread number", nargs='?', default=130)
     parser.add_argument("-p", type=str, help="proxy. http://x.x.x.x:xx or socks5://x.x.x.x:xx", nargs='?', default='')
     parser.add_argument("-nb", '--nb', help="start nb", action='store_true')
 
@@ -773,7 +840,20 @@ if __name__ == '__main__':
     if args.f and args.ip:
         parser.print_help()
         sys.exit(1)
-    
+
+    output_path = os.path.dirname(os.path.abspath(__file__)) + '/output'
+    if os.path.exists(output_path) is False:
+        os.makedirs(output_path)
+    seconds = time.time()
+    time_str = time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime(seconds))
+    fp_csv = open(output_path + '/' + time_str + '.csv', "a+b") # , errors='ignore', newline=''
+    csv_writer = csv.writer(fp_csv, dialect="excel",)
+    #  [+] [192.168.181.16] INTERNET\USER1  user1.internet.google.com  (Windows 7 Professional 7601 Service Pack 1|Windows 7 Professional 6.1) multIP:None
+    #  IP	 存活	机器名	所在域	操作系统	端口服务	应用组件	多网卡	漏洞	凭据	所属部门	姓名	邮箱	杀软	其他
+
+    csv_writer.writerow(['IP', '机器名', '所在域', 'FQDN', '操作系统', '端口服务', '应用组件', '多网卡', '漏洞', '凭据', '身份', '杀软', '其他'])
+    fp_csv.close()
+
     try:
         if args.p:
             ip_port = args.p.split('//')[1]
@@ -788,7 +868,7 @@ if __name__ == '__main__':
                 socks.set_default_proxy(p_type, addr=p_ip, port=p_port)
                 socket.socket = socks.socksocket
     except:
-      pass
+      traceback.print_exc()
     
     
     if args.f:
@@ -811,10 +891,12 @@ if __name__ == '__main__':
         except Exception as e:
             print("Error t")
 
+    thread.start_new_thread(write_csv, ())
+
     while True:
         time.sleep(1)
         if q_in.empty():
-            time.sleep(args.t)
+            time.sleep(args.t+3)
             break
         
 
